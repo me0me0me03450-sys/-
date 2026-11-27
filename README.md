@@ -87,7 +87,7 @@ git init
 git add .
 git commit -m "Initial Nidaa production platform"
 git branch -M main
-git remote add origin https://github.com/me0me0me03450-sys/nidaa-school.git
+git remote add origin https://github.com/me0me0me03450-sys/-.git
 git push -u origin main
 ```
 
@@ -97,7 +97,7 @@ git push -u origin main
 
 ## النشر عبر Cloudflare Pages (المجانية)
 
-1. في لوحة تحكم **Cloudflare Pages** اربط المستودع `me0me0me03450-sys/nidaa-school`.
+1. في لوحة تحكم **Cloudflare Pages** اربط المستودع `me0me0me03450-sys/-`.
 2. إعدادات البناء:
    - **Build command:** `npm run build`
    - **Build output directory:** `dist`
