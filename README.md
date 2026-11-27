@@ -80,7 +80,7 @@ npm run dev
 
 ---
 
-## الربط مع GitHub (مستودع خاص)
+## الربط مع GitHub (مستودع عام)
 
 ```bash
 git init
