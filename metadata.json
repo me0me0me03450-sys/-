@@ -1,0 +1,6 @@
+{
+  "name": "منصة نداء - شركة تربية الأجيال الأهلية",
+  "description": "منصة نداء الإلكترونية لإدارة استدعاء وخروج الطالبات لصالح شركة تربية الأجيال الأهلية.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
