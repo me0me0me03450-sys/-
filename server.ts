@@ -187,9 +187,9 @@ function enrichRegistration(
 }
 
 function getClientIp(req: Request): string {
-  const xff = req.headers['x-forwarded-for'];
+  const xff = req.ip;
   if (typeof xff === 'string' && xff.trim()) {
-    return xff.split(',')[0].trim();
+    return xff.trim();
   }
   return req.ip || 'local';
 }
@@ -259,7 +259,7 @@ function requireSuperAdmin(
 // ============================================================================
 async function startServer() {
   const app = express();
-  app.set('trust proxy', true);
+  app.set('trust proxy', /^\d+$/.test(process.env.NIDAA_TRUST_PROXY_HOPS ?? '') ? Number(process.env.NIDAA_TRUST_PROXY_HOPS) : false);
   app.use(express.json({ limit: '2mb' }));
 
   // Health
@@ -365,6 +365,17 @@ async function startServer() {
       return;
     }
 
+    const loginRateKey = `staff-login:${getClientIp(req)}:${username.slice(0, 48)}`;
+    const loginRate = db.parentRateLimits[loginRateKey];
+    const nowMs = Date.now();
+    if (loginRate?.lockedUntil && new Date(loginRate.lockedUntil).getTime() > nowMs) {
+      res.status(429).json({
+        ok: false,
+        error: 'تم تجاوز محاولات الدخول مؤقتاً. يرجى المحاولة بعد قليل.',
+      });
+      return;
+    }
+
     // Optional env override for Super Admin
     const envPass = process.env.NIDAA_ADMIN_PASSWORD?.trim();
     let account = db.staffAccounts.find(
@@ -410,6 +421,23 @@ async function startServer() {
       saveDb(db);
     } else {
       if (!account || !account.isActive || !verifySecret(password, account.passwordHash)) {
+        const attempts =
+          loginRate?.lockedUntil && new Date(loginRate.lockedUntil).getTime() <= nowMs
+            ? 1
+            : (loginRate?.failedAttempts ?? 0) + 1;
+        const maxAttempts = Math.max(3, db.settings.maxParentAttempts || 5);
+        const lockoutMinutes = Math.max(1, db.settings.lockoutMinutes || 10);
+        const lockedUntil =
+          attempts >= maxAttempts
+            ? new Date(nowMs + lockoutMinutes * 60 * 1000).toISOString()
+            : null;
+        db.parentRateLimits[loginRateKey] = {
+          rateKey: loginRateKey,
+          failedAttempts: attempts,
+          lockedUntil,
+          updatedAt: new Date().toISOString(),
+        };
+        saveDb(db);
         res.status(401).json({
           ok: false,
           error: 'اسم المستخدم أو كلمة المرور غير صحيحة.',
@@ -425,6 +453,11 @@ async function startServer() {
         entityId: account.id,
         details: { role: account.role },
       });
+      saveDb(db);
+    }
+
+    if (db.parentRateLimits[loginRateKey]) {
+      delete db.parentRateLimits[loginRateKey];
       saveDb(db);
     }
 
